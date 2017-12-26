@@ -195,7 +195,13 @@ int main(int argc, char *argv[])
         system("pause");
         return -1;
     }
-    //run_new_process(L"C:\\tests\\demo.exe");
+
+    wchar_t target[MAX_PATH];
+    ExpandEnvironmentStringsW(L"%SystemRoot%\\system32\\calc.exe", target, MAX_PATH);
+    if (run_new_process(target)) {
+        std::cout <<"[+] Process init ok!" << std::endl;
+    }
+
     if (run_shellcode(ntdll_NtCurrentProcess())) {
         std::cout <<"[+] Success" << std::endl;
     }
