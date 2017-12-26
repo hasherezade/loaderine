@@ -32,7 +32,7 @@ HANDLE run_in_new_thread(HANDLE hProcess, LPVOID entry_point)
 HANDLE open_file(wchar_t* dummy_name)
 {
     HANDLE hFile = kernel32_CreateFileW(dummy_name,
-        GENERIC_WRITE | GENERIC_READ,
+        GENERIC_READ,
         0,
         NULL,
         OPEN_EXISTING,
