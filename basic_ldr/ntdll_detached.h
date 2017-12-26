@@ -66,6 +66,16 @@ extern NTSTATUS (NTAPI * ntdll_NtWriteVirtualMemory)(
     OUT PULONG NumberOfBytesWritten OPTIONAL
 );
 
+extern NTSTATUS (NTAPI *ntdll_NtCreateSection) (
+    OUT PHANDLE SectionHandle,
+    IN  ACCESS_MASK DesiredAccess,
+    IN  POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+    IN  PLARGE_INTEGER MaximumSize OPTIONAL,
+    IN  ULONG SectionPageProtection,
+    IN  ULONG AllocationAttributes,
+    IN  HANDLE FileHandle OPTIONAL
+);
+
 // Load NTDLL by PEconv:
 HMODULE load_ntdll(size_t &v_size);
 

