@@ -14,6 +14,16 @@ BOOL (WINAPI *kernel32_WriteProcessMemory)(
     _Out_opt_ SIZE_T * lpNumberOfBytesWritten
 ) = NULL;
 
+HANDLE (WINAPI *kernel32_CreateFileW)(
+    _In_ LPCWSTR lpFileName,
+    _In_ DWORD dwDesiredAccess,
+    _In_ DWORD dwShareMode,
+    _In_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+    _In_ DWORD dwCreationDisposition,
+    _In_ DWORD dwFlagsAndAttributes,
+    _In_opt_ HANDLE hTemplateFile
+) = NULL;
+
 HMODULE load_kernel32(buffered_dlls_resolver *my_resolver)
 {
     CHAR path[MAX_PATH];
@@ -60,6 +70,21 @@ bool init_kernel32_func(HMODULE lib)
         LPCVOID,
         SIZE_T,
         SIZE_T *
+    )) proc;
+
+    //CreateFileW
+    proc = peconv::get_exported_func(lib, "CreateFileW");
+    if (proc == nullptr) {
+        return false;
+    }
+    kernel32_CreateFileW = (HANDLE (WINAPI *)(
+        LPCWSTR,
+        DWORD,
+        DWORD,
+        LPSECURITY_ATTRIBUTES,
+        DWORD,
+        DWORD,
+        HANDLE
     )) proc;
 
     return true;

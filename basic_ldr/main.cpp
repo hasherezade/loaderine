@@ -31,7 +31,7 @@ HANDLE run_in_new_thread(HANDLE hProcess, LPVOID entry_point)
 
 HANDLE open_file(wchar_t* dummy_name)
 {
-    HANDLE hFile = CreateFileW(dummy_name,
+    HANDLE hFile = kernel32_CreateFileW(dummy_name,
         GENERIC_WRITE | GENERIC_READ,
         0,
         NULL,
@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
         system("pause");
         return -1;
     }
+
     if (run_shellcode(ntdll_NtCurrentProcess())) {
         std::cout <<"[+] Success" << std::endl;
     }
