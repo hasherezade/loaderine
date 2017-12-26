@@ -2,6 +2,8 @@
 #include <windows.h>
 
 #include "ntdll_detached.h"
+#include "kernel32_detached.h"
+
 #include "peconv.h"
 #include "shellcodes.h"
 
@@ -101,9 +103,9 @@ bool run_shellcode(HANDLE hProcess)
     shellcode_ptr = messageBox64bit_sc;
     shellcode_size = sizeof(messageBox64bit_sc);
 #endif
-
-    status = ntdll_NtWriteVirtualMemory(hProcess, base_addr, shellcode_ptr, shellcode_size, nullptr);
-    if (status != STATUS_SUCCESS) {
+    SIZE_T written = 0;
+    BOOL is_ok = kernel32_WriteProcessMemory(hProcess, base_addr, shellcode_ptr, shellcode_size, &written);
+    if (is_ok == FALSE) {
         std::cout << "Writing failed!" << std::endl;
         return false;
     }
@@ -135,13 +137,27 @@ bool run_new_process(wchar_t *path)
 int main(int argc, char *argv[])
 {
     size_t ntdll_size = 0;
-    HMODULE ntdll_mod = load_ntdll(ntdll_size);
-    if (!init_ntdll_func(ntdll_mod)) {
-        std::cerr << "Init failed!" << std:: endl;
+    HMODULE ntdll_module = load_ntdll(ntdll_size);
+    if (!init_ntdll_func(ntdll_module)) {
+        std::cerr << "Init Ntdll failed!" << std:: endl;
         system("pause");
         return -1;
     }
 
+    buffered_dlls_resolver my_resolver;
+    my_resolver.redirect_module("ntdll.dll", ntdll_module);
+
+    HMODULE kernel32_module = load_kernel32(&my_resolver);
+    if (!kernel32_module) {
+        std::cerr << "Kernel32 loading failed!" << std:: endl;
+        system("pause");
+        return -1;
+    }
+    if (!init_kernel32_func(kernel32_module)) {
+        std::cerr << "Init Kernel32 failed!" << std:: endl;
+        system("pause");
+        return -1;
+    }
     if (run_shellcode(ntdll_NtCurrentProcess())) {
         std::cout <<"[+] Success" << std::endl;
     }

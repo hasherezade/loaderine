@@ -10,11 +10,14 @@ include_directories ( ${PECONV_DIR}/include )
 set (srcs
 	main.cpp
 	ntdll_detached.cpp
+	kernel32_detached.cpp
 )
 
 set (hdrs
 	ntddk.h
 	ntdll_detached.h
+	kernel32_detached.h
+	buffered_dll_resolver.h
 	shellcodes.h
 )
 
