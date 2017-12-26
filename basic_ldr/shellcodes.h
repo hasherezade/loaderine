@@ -27,6 +27,8 @@ unsigned char messageBox32bit_sc[] =
 
 /*
     from: https://www.tophertimzen.com/blog/windowsx64Shellcode/
+    warning: this shellcode crashes on Windows 8 and above
+    will be replaced by some other soon...
 */
 unsigned char messageBox64bit_sc[] = {
     0x48, 0x83, 0xec, 0x28, 0x48, 0x83, 0xe4, 0xf0, 0x65, 0x4c, 0x8b, 0x24,
