@@ -117,6 +117,23 @@ bool run_shellcode(HANDLE hProcess)
     return true;
 }
 
+bool buffer_remote_peb(HANDLE hProcess, PROCESS_BASIC_INFORMATION &pi, OUT PEB &peb_copy)
+{
+    memset(&peb_copy,0,sizeof(PEB));
+    PPEB remote_peb_addr = pi.PebBaseAddress;
+#ifdef _DEBUG
+    std::cout << "PEB address: " << (std::hex) << (ULONGLONG)remote_peb_addr << std::endl;
+#endif 
+    // Write the payload's ImageBase into remote process' PEB:
+    NTSTATUS status = ntdll_NtReadVirtualMemory(hProcess, remote_peb_addr, &peb_copy, sizeof(PEB), NULL);
+    if (status != STATUS_SUCCESS)
+    {
+        std::cerr <<"Cannot read remote PEB: "<< GetLastError() << std::endl;
+        return false;
+    }
+    return true;
+}
+
 bool run_new_process(wchar_t *path)
 {
     HANDLE file = open_file(path);
@@ -129,6 +146,26 @@ bool run_new_process(wchar_t *path)
         std::cerr << "Creating process failed!" << std::endl;
         return false;
     }
+    PROCESS_BASIC_INFORMATION pbi = { 0 };
+
+    DWORD ReturnLength = 0;
+    NTSTATUS status = ntdll_NtQueryInformationProcess(
+        hProcess,
+        ProcessBasicInformation,
+        &pbi,
+        sizeof(PROCESS_BASIC_INFORMATION),
+        &ReturnLength
+    );
+    if (status != STATUS_SUCCESS) {
+        std::cerr << "NtQueryInformationProcess failed" << std::endl;
+        return false;
+    }
+    std::cout << "PEB:" << pbi.PebBaseAddress << std::endl;
+    PEB peb_copy = { 0 };
+    if (!buffer_remote_peb(hProcess, pbi, peb_copy)) {
+        return false;
+    }
+    std::cout << "ImageBaseAddress: " << peb_copy.ImageBaseAddress << std::endl;
     //TODO: setup process parameters
     //TODO2: run a thread inside the process
     return true;
@@ -158,7 +195,7 @@ int main(int argc, char *argv[])
         system("pause");
         return -1;
     }
-
+    //run_new_process(L"C:\\tests\\demo.exe");
     if (run_shellcode(ntdll_NtCurrentProcess())) {
         std::cout <<"[+] Success" << std::endl;
     }

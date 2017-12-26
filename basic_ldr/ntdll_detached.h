@@ -66,6 +66,14 @@ extern NTSTATUS (NTAPI * ntdll_NtWriteVirtualMemory)(
     OUT PULONG NumberOfBytesWritten OPTIONAL
 );
 
+extern NTSTATUS (NTAPI *ntdll_NtReadVirtualMemory) (
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    OUT PVOID Buffer,
+    IN ULONG NumberOfBytesToRead,
+    OUT PULONG NumberOfBytesRead OPTIONAL
+);
+
 extern NTSTATUS (NTAPI *ntdll_NtCreateSection) (
     OUT PHANDLE SectionHandle,
     IN  ACCESS_MASK DesiredAccess,
@@ -74,6 +82,14 @@ extern NTSTATUS (NTAPI *ntdll_NtCreateSection) (
     IN  ULONG SectionPageProtection,
     IN  ULONG AllocationAttributes,
     IN  HANDLE FileHandle OPTIONAL
+);
+
+extern NTSTATUS (NTAPI *ntdll_NtQueryInformationProcess) (
+    IN HANDLE ProcessHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    OUT PVOID ProcessInformation,
+    IN ULONG ProcessInformationLength,
+    OUT PULONG ReturnLength OPTIONAL
 );
 
 // Load NTDLL by PEconv:

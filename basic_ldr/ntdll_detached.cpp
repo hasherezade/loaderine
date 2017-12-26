@@ -59,6 +59,14 @@ NTSTATUS (NTAPI *ntdll_NtWriteVirtualMemory)(
     OUT PULONG NumberOfBytesWritten OPTIONAL
 ) = NULL;
 
+NTSTATUS (NTAPI *ntdll_NtReadVirtualMemory) (
+    IN HANDLE ProcessHandle,
+    IN PVOID BaseAddress,
+    OUT PVOID Buffer,
+    IN ULONG NumberOfBytesToRead,
+    OUT PULONG NumberOfBytesRead OPTIONAL
+) = NULL;
+
 NTSTATUS (NTAPI *ntdll_NtCreateSection) (
     OUT PHANDLE SectionHandle,
     IN  ACCESS_MASK DesiredAccess,
@@ -68,6 +76,15 @@ NTSTATUS (NTAPI *ntdll_NtCreateSection) (
     IN  ULONG AllocationAttributes,
     IN  HANDLE FileHandle OPTIONAL
 ) = NULL;
+
+NTSTATUS (NTAPI *ntdll_NtQueryInformationProcess) (
+    IN HANDLE ProcessHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    OUT PVOID ProcessInformation,
+    IN ULONG ProcessInformationLength,
+    OUT PULONG ReturnLength OPTIONAL
+) = NULL;
+
 
 HMODULE load_ntdll(size_t &v_size)
 {
@@ -160,6 +177,18 @@ bool init_ntdll_func(HMODULE lib)
         PULONG //NumberOfBytesWritten OPTIONAL
     )) proc;
 
+    proc = peconv::get_exported_func(lib, "NtReadVirtualMemory");
+    if (proc == nullptr) {
+        return false;
+    }
+    ntdll_NtReadVirtualMemory = (NTSTATUS (NTAPI *)(
+        HANDLE, //ProcessHandle
+        PVOID, // BaseAddress
+        PVOID, //Buffer
+        ULONG, //NumberOfBytesToWrite
+        PULONG //NumberOfBytesWritten OPTIONAL
+    )) proc;
+
     proc = peconv::get_exported_func(lib, "NtCreateSection");
     if (proc == nullptr) {
         return false;
@@ -172,6 +201,18 @@ bool init_ntdll_func(HMODULE lib)
         ULONG,
         ULONG,
         HANDLE
+    )) proc;
+
+    proc = peconv::get_exported_func(lib, "NtQueryInformationProcess");
+    if (proc == nullptr) {
+        return false;
+    }
+    ntdll_NtQueryInformationProcess = (NTSTATUS (NTAPI *)(
+        HANDLE,
+        PROCESSINFOCLASS,
+        PVOID,
+        ULONG,
+        PULONG
     )) proc;
 
     return true;
